@@ -1,10 +1,13 @@
 // Render every .slide element to a PNG via Chromium, and stitch a per-carousel contact sheet.
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, existsSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, resolve } from "node:path";
 import sharp from "sharp";
 import { CAROUSELS } from "../src/content.mjs";
 
-const ROOT = "/home/user/insta-stuff";
+// Repo root, derived from this file's location — no hard-coded absolute path.
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCALE = 2; // -> 2160x2700 output
 
 const only = process.argv[2]; // optional carousel id filter
@@ -15,12 +18,21 @@ const page = await ctx.newPage();
 
 for (const c of CAROUSELS) {
   if (only && c.id !== only) continue;
+  const htmlPath = `${ROOT}/out/html/${c.id}.html`;
+  if (!existsSync(htmlPath)) {
+    console.error(`✗ ${c.id}: ${htmlPath} not found — run "node scripts/build.mjs" first.`);
+    continue;
+  }
   const dir = `${ROOT}/out/${c.id}`;
   mkdirSync(dir, { recursive: true });
-  await page.goto(`file://${ROOT}/out/html/${c.id}.html`);
+  await page.goto(pathToFileURL(htmlPath).href);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(250);
   const slides = await page.$$(".slide");
+  if (slides.length === 0) {
+    console.error(`✗ ${c.id}: no .slide elements rendered — skipping.`);
+    continue;
+  }
   const files = [];
   for (let i=0;i<slides.length;i++){
     const f = `${dir}/slide-${String(i+1).padStart(2,"0")}.png`;

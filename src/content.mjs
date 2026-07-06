@@ -1,4 +1,4 @@
-// THE FOSTER FILES — content for 10 carousels.
+// THE FOSTER FILES — content for 15 carousels.
 // Voice: calm-assertive, masculine, tough-love. Energy first, structure second, affection third.
 // Ranked by what new-dog & foster people care about most.
 

@@ -49,7 +49,21 @@ deliver/canva/      # one HTML per carousel for importing into Canva (image-back
 ```bash
 npm install
 node scripts/build.mjs && node scripts/render.mjs    # render all slides
-node scripts/deliver.mjs                              # 1080x1350 + Canva HTML
+node scripts/deliver.mjs                              # 1080x1350 + Canva HTML + previews
 ```
+
+All paths are derived from each script's own location, so the repo works from any
+checkout directory — no hard-coded absolute path.
+
+`scripts/deliver.mjs` writes Canva HTML whose `<img>` paths default to the sibling
+`deliver/<id>/` folders (works offline, no hosting needed). For Canva's
+import-from-URL flow, point them at hosted images instead:
+
+```bash
+CANVA_IMAGE_BASE="https://raw.githubusercontent.com/<owner>/<repo>/<branch>/deliver" node scripts/deliver.mjs
+```
+
+Both scripts take an optional carousel-id argument to process just one
+(e.g. `node scripts/render.mjs 05-leash-pulling`).
 
 Sizing is 1080 × 1350 (4:5), the highest-real-estate Instagram portrait format.

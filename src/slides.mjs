@@ -1,13 +1,18 @@
 // Slide-type → HTML renderers for THE FOSTER FILES.
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, resolve } from "node:path";
 import { BRAND, CAROUSELS } from "./content.mjs";
 const SERIES_TOTAL = String(CAROUSELS.length).padStart(2, "0");
 
-const ROOT = "file:///home/user/insta-stuff";
+// Repo root, derived from this file's location — no hard-coded absolute path.
+const ROOT = pathToFileURL(resolve(dirname(fileURLToPath(import.meta.url)), "..")).href;
 const photoURL = (key, treat) => `${ROOT}/assets/photos/${key}_${treat}.jpg`;
 const LOGO_STAMP = `${ROOT}/assets/photos/logo_stamp.png`;
 const LOGO_COLOR = `${ROOT}/assets/photos/logo_color.png`;
 
-const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const esc = (s) => String(s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 
 // ransom word array -> chips
 function ransom(words, cls = "") {
@@ -23,13 +28,13 @@ function dots(total, i) {
   return s + "</div>";
 }
 
-function furniture(c, i, total, { kicker } = {}) {
+function furniture(c) {
   return `
     <span class="cropmark tl"></span><span class="cropmark tr"></span>
     <span class="cropmark bl"></span><span class="cropmark br"></span>
     <div class="halftone"></div>
     <div class="masthead">
-      <div class="kicker">${esc(BRAND.series.replace("FILES","FILES"))}<span class="dot"> ●</span></div>
+      <div class="kicker">${esc(BRAND.series)}<span class="dot"> ●</span></div>
       <div class="tab">NO. ${c.no} / ${SERIES_TOTAL}</div>
     </div>`;
 }
@@ -47,12 +52,20 @@ const photoBox = (p, extra="") =>
   `<div class="photo ${p.treat==="bw"?"duo":""} ${extra}"><img src="${photoURL(p.key,p.treat)}" alt=""></div>`;
 
 // ---- COVER ----
+// The headline flows inside .frame-pad while the photo/sticker/logo below it sit
+// at fixed offsets, so a taller title risks overlapping them. Size the ransom by
+// BOTH total characters and chip count (each chip adds padding + a wrap point) and
+// take the smaller — this never enlarges the tuned titles, only shrinks ones that
+// would otherwise grow tall enough to collide.
 function cover(c, i, total, s) {
-  const wc = s.title.reduce((n,[t])=>n+t.length,0);
-  const rs = wc<=14?118 : wc<=22?104 : wc<=30?92 : 80;
+  const chars = s.title.reduce((n,[t])=>n+t.length,0);
+  const words = s.title.length;
+  const byChars = chars<=14?118 : chars<=22?104 : chars<=30?92 : 80;
+  const byWords = words<=4?118 : words<=6?104 : words<=8?92 : 80;
+  const rs = Math.min(byChars, byWords);
   return `<section class="slide" style="--rs:${rs}px">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div style="margin-top:30px" class="kicker">FILE NO.${c.no} · ${esc(s.topic)}</div>
       <div style="margin-top:26px">${ransom(s.title)}</div>
     </div>
@@ -78,7 +91,7 @@ function truth(c, i, total, s) {
   }).join("");
   return `<section class="slide ink">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
         <div class="kicker" style="color:var(--red);margin-bottom:30px">${esc(s.kicker)}</div>
         <div class="stmt">${lines}</div>
@@ -98,7 +111,7 @@ function steps(c, i, total, s) {
     </div>`).join("");
   return `<section class="slide">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div class="kicker" style="margin-top:30px;color:var(--red)">${esc(s.kicker)}</div>
       <div class="huge" style="font-size:74px;margin:12px 0 34px">${esc(s.title)}</div>
       <div class="steps">${items}</div>
@@ -111,7 +124,7 @@ function steps(c, i, total, s) {
 function mistake(c, i, total, s) {
   return `<section class="slide">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:34px">
         <div class="kicker" style="color:var(--red)">${esc(s.kicker)}</div>
         <div class="twoup">
@@ -139,7 +152,7 @@ function saythis(c, i, total, s) {
     </div>`).join("");
   return `<section class="slide ink">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div class="kicker" style="margin-top:30px;color:var(--red)">${esc(s.kicker)}</div>
       <div class="huge" style="font-size:70px;margin:12px 0 30px">${esc(s.title)}</div>
       <div class="say">${rows}</div>
@@ -152,7 +165,7 @@ function saythis(c, i, total, s) {
 function quote(c, i, total, s) {
   return `<section class="slide">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
         <div class="quotemark">“</div>
         <div class="kicker" style="color:var(--red);margin:8px 0 22px">${esc(s.kicker)}</div>
@@ -172,7 +185,7 @@ function closer(c, i, total, s) {
   ).join("<br>");
   return `<section class="slide ink">
     <div class="frame-pad">
-      ${furniture(c,i,total)}
+      ${furniture(c)}
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
         <div class="kicker" style="color:var(--red);margin-bottom:24px">${esc(s.kicker)}</div>
         <div class="huge" style="font-size:104px">${mantra}</div>

@@ -5,7 +5,6 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const families = {
   Anton: "Anton",
   ArchivoBlack: "Archivo+Black",
-  Oswald: "Oswald:wght@500;700",
   BarlowCondensed: "Barlow+Condensed:wght@400;500;600;700",
   SpecialElite: "Special+Elite",
   PermanentMarker: "Permanent+Marker",

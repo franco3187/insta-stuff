@@ -1,4 +1,4 @@
-// THE FOSTER FILES — content for 10 carousels.
+// THE FOSTER FILES — content for 15 carousels.
 // Voice: calm-assertive, masculine, tough-love. Energy first, structure second, affection third.
 // Ranked by what new-dog & foster people care about most.
 
@@ -261,9 +261,9 @@ export const CAROUSELS = [
         ] },
       { type:"saythis", kicker:"READ THE BODIES", title:"PLAY OR PROBLEM?",
         rows:[
-          {not:"Stiff. Frozen. Hard stare.", yes:"That’s a stop. Interrupt and add space before it tips over."},
+          {not:"“Stiff and still? He’s settling in.”", yes:"Stiff, frozen, hard stare = a stop. Interrupt and add space before it tips over."},
           {not:"“They’ll sort it out themselves.”", yes:"Loose, bouncy, taking turns, play-bows = play. Build in breaks."},
-          {not:"Resident dog “being dramatic.”", yes:"That’s jealousy talking. Honor their status first and it settles."},
+          {not:"“The resident dog’s just being dramatic.”", yes:"That’s jealousy talking. Honor their status first and it settles."},
         ] },
       { type:"closer", kicker:"INTRODUCTIONS",
         mantra:[["WALK","plain"],["FIRST.","red"],["MEET","plain"],["SECOND.","red"]],

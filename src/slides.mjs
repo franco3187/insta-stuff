@@ -2,7 +2,7 @@
 import { BRAND, CAROUSELS } from "./content.mjs";
 const SERIES_TOTAL = String(CAROUSELS.length).padStart(2, "0");
 
-const ROOT = "file:///home/user/insta-stuff";
+const ROOT = new URL("..", import.meta.url).href.replace(/\/$/, "");
 const photoURL = (key, treat) => `${ROOT}/assets/photos/${key}_${treat}.jpg`;
 const LOGO_STAMP = `${ROOT}/assets/photos/logo_stamp.png`;
 const LOGO_COLOR = `${ROOT}/assets/photos/logo_color.png`;
@@ -23,13 +23,13 @@ function dots(total, i) {
   return s + "</div>";
 }
 
-function furniture(c, i, total, { kicker } = {}) {
+function furniture(c, i, total) {
   return `
     <span class="cropmark tl"></span><span class="cropmark tr"></span>
     <span class="cropmark bl"></span><span class="cropmark br"></span>
     <div class="halftone"></div>
     <div class="masthead">
-      <div class="kicker">${esc(BRAND.series.replace("FILES","FILES"))}<span class="dot"> ●</span></div>
+      <div class="kicker">${esc(BRAND.series)}<span class="dot"> ●</span></div>
       <div class="tab">NO. ${c.no} / ${SERIES_TOTAL}</div>
     </div>`;
 }

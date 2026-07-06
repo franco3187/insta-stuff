@@ -1,10 +1,12 @@
 // Render every .slide element to a PNG via Chromium, and stitch a per-carousel contact sheet.
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import sharp from "sharp";
 import { CAROUSELS } from "../src/content.mjs";
 
-const ROOT = "/home/user/insta-stuff";
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCALE = 2; // -> 2160x2700 output
 
 const only = process.argv[2]; // optional carousel id filter
@@ -18,7 +20,7 @@ for (const c of CAROUSELS) {
   const dir = `${ROOT}/out/${c.id}`;
   mkdirSync(dir, { recursive: true });
   await page.goto(`file://${ROOT}/out/html/${c.id}.html`);
-  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(async () => { await document.fonts.ready; });
   await page.waitForTimeout(250);
   const slides = await page.$$(".slide");
   const files = [];

@@ -4,7 +4,7 @@
    Palette: ink black · bone paper · blood red.  2-colour print logic.
    ============================================================ */
 
-@import url("file:///home/user/insta-stuff/assets/fonts.css");
+@import url("../assets/fonts.css");
 
 :root{
   --ink:#15110D;        /* warm near-black ink              */

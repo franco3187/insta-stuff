@@ -1,9 +1,11 @@
 // Assemble standalone HTML pages (one per carousel) + a contact-sheet index.
-import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
-import { CAROUSELS, BRAND } from "../src/content.mjs";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { CAROUSELS } from "../src/content.mjs";
 import { renderSlide } from "../src/slides.mjs";
 
-const ROOT = "/home/user/insta-stuff";
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 mkdirSync(`${ROOT}/out/html`, { recursive: true });
 
 const head = `<!doctype html><html><head><meta charset="utf-8">

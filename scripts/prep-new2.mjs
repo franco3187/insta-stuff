@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 const U = process.argv[2];
+if (!U) { console.error('usage: node scripts/prep-new2.mjs <base-url>'); process.exit(1); }
 const map = {
   mal:      `${U}/a0388379-IMG_6897.jpeg`,  // malinois service-dog-in-training, alert
   rott:     `${U}/3623968f-IMG_3393.jpeg`,   // rottweiler on leash walk (rotated)

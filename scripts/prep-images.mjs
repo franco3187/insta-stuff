@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 const U = process.argv[2];
+if (!U) { console.error('usage: node scripts/prep-images.mjs <base-url>'); process.exit(1); }
 const map = {
   hero:   `${U}/f0c0c3cb-IMG_5248.jpeg`,           // smiling, hugging brown/white pittie
   merch:  `${U}/06ae9ab3-IMG_3443.jpeg`,           // REAL MEN RESCUE DOGS, carrying dog, petsmart

@@ -1,5 +1,9 @@
 import sharp from 'sharp';
 const U = process.argv[2];
+if (!U) {
+  console.error('usage: node scripts/prep-images.mjs <source-image-dir>');
+  process.exit(1);
+}
 const map = {
   hero:   `${U}/f0c0c3cb-IMG_5248.jpeg`,           // smiling, hugging brown/white pittie
   merch:  `${U}/06ae9ab3-IMG_3443.jpeg`,           // REAL MEN RESCUE DOGS, carrying dog, petsmart
@@ -7,8 +11,7 @@ const map = {
   kiss:   `${U}/37cde517-IMG_1661.jpeg`,           // kissing gray pittie in red vest (rotated)
 };
 for (const [name, src] of Object.entries(map)) {
-  const base = sharp(src).rotate(); // auto-orient via EXIF
-  const meta = await base.metadata();
+  const meta = await sharp(src).metadata(); // source dimensions, for logging
   // color, normalized
   await sharp(src).rotate()
     .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })

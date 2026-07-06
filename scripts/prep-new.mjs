@@ -1,5 +1,9 @@
 import sharp from 'sharp';
 const U = process.argv[2];
+if (!U) {
+  console.error('usage: node scripts/prep-new.mjs <source-image-dir>');
+  process.exit(1);
+}
 const map = {
   lick:   `${U}/792be8cc-IMG_5247.jpeg`,   // white pittie licking face, joyful
   nap:    `${U}/84150205-IMG_4763.jpeg`,    // napping with boxer on bed (landscape)

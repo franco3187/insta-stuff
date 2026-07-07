@@ -21,15 +21,19 @@ start flow/index.html         # Windows
 
 Or drag the file onto a Chrome/Edge/Safari tab. On first use, allow microphone access.
 
-> Live dictation uses the browser's built-in Web Speech API. It works in
-> **Chrome, Edge, and Safari** (desktop + mobile). In browsers without it
-> (e.g. Firefox) you can still type and use every cleanup and command-mode tool.
+> **Two transcription engines** (Settings → Transcription engine):
+> - **On-device (Web Speech)** — default, instant, fully private. Works in
+>   **Chrome, Edge, and Safari** (desktop + mobile).
+> - **Cloud (OpenAI Whisper)** — higher accuracy, works in **any** browser
+>   (including Firefox). Records your audio and sends it to OpenAI's
+>   `/v1/audio/transcriptions` using the key you provide.
 
 ## What it does
 
 | | |
 |---|---|
 | 🎙️ **Push-to-talk** | Click the mic, or **hold Space** to talk and release to stop. **Esc** stops anytime. |
+| 🔀 **Two engines** | On-device Web Speech (free/private) or cloud OpenAI Whisper (more accurate, any browser). |
 | ✨ **Auto-clean** | Strips filler words, fixes spacing, capitalizes sentences and `I`. Toggle on the editor or in settings. |
 | ⌨️ **Spoken punctuation** | Say "new line", "new paragraph", "comma", "period", "question mark", "open/close quote", etc. |
 | 🌍 **100+ languages** | Pick your dictation language in Settings — from English and Spanish to Japanese, Arabic and Hindi. |

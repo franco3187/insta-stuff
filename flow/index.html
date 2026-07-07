@@ -214,7 +214,7 @@
   </header>
 
   <div class="unsupported" id="unsupported">
-    ⚠️ Live dictation needs the Web Speech API — use <b>Chrome</b>, <b>Edge</b>, or <b>Safari</b> on desktop/mobile. You can still type and use the cleanup &amp; AI tools.
+    ⚠️ On-device dictation needs the Web Speech API (<b>Chrome</b>, <b>Edge</b>, <b>Safari</b>). In this browser, switch <b>Settings → Transcription engine</b> to <b>Cloud (Whisper)</b> to dictate here, or just type and use the cleanup &amp; command tools.
   </div>
 
   <div class="card">
@@ -278,6 +278,15 @@
     <div class="modal-head"><h3>Settings</h3><span class="spacer"></span><button class="iconbtn" id="closeSettings" aria-label="Close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
     <div class="modal-body">
       <div class="field">
+        <label for="engine">Transcription engine</label>
+        <div class="desc">On-device is instant &amp; private (Chrome/Edge/Safari). Cloud (Whisper) is more accurate and works in any browser — needs an OpenAI key below.</div>
+        <select id="engine">
+          <option value="device">On-device (Web Speech) — free, private</option>
+          <option value="whisper">Cloud (OpenAI Whisper) — needs key</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label for="lang">Dictation language</label>
         <select id="lang"></select>
       </div>
@@ -325,7 +334,8 @@
 
   /* ---------- state / settings ---------- */
   const defaults = { clean:true, autocopy:false, continuous:false, lang:"en-US",
-                     theme:"dark", aiProvider:"local", aiKey:"", aiModel:"" };
+                     theme:"dark", aiProvider:"local", aiKey:"", aiModel:"",
+                     engine:"device", whisperModel:"whisper-1" };
   let S = Object.assign({}, defaults, load(LS));
   let history = load(LH) || [];
 
@@ -431,25 +441,35 @@
     editor.scrollTop = editor.scrollHeight;
   }
 
-  function start(){
-    if(!SR){ toast("Speech recognition not supported here"); return; }
+  async function start(){
     if(recording) return;
     committed = editor.value.trim();
-    try{ rec = newRecognizer(); rec.start(); }
-    catch(e){ toast("Couldn't start mic"); return; }
+    if(S.engine === "whisper"){
+      const ok = await startCloud();
+      if(!ok) return;
+    } else {
+      if(!SR){ toast("On-device speech isn't supported here — switch to Cloud (Whisper) in Settings"); return; }
+      try{ rec = newRecognizer(); rec.start(); }
+      catch(e){ toast("Couldn't start mic"); return; }
+    }
     recording = true; startTs = Date.now();
     mic.classList.add("rec"); dot.classList.add("live");
     mic.setAttribute("aria-label","Stop dictation");
-    statusEl.textContent = "Listening…";
+    statusEl.textContent = S.engine === "whisper" ? "Recording…" : "Listening…";
     startMeter();
   }
 
   function stop(){
     if(!recording) return;
     recording = false;
-    try{ rec && rec.stop(); }catch(e){}
     mic.classList.remove("rec"); dot.classList.remove("live");
     mic.setAttribute("aria-label","Start dictation");
+    if(S.engine === "whisper"){
+      try{ mediaRec && mediaRec.state !== "inactive" && mediaRec.stop(); }catch(e){}
+      // transcription + history handled in onCloudStop
+      return;
+    }
+    try{ rec && rec.stop(); }catch(e){}
     committed = editor.value.trim();
     render(committed, "");
     stopMeter();
@@ -464,11 +484,62 @@
 
   function toggle(){ recording ? stop() : start(); }
 
+  /* ---------- cloud transcription (OpenAI Whisper) ---------- */
+  let mediaRec = null, chunks = [];
+  async function startCloud(){
+    if(!S.aiKey){ toast("Add an OpenAI key in Settings for cloud transcription"); $("#modalBg").classList.add("open"); return false; }
+    try{ await acquireMic(); }
+    catch(e){ toast("Microphone blocked — allow access and retry"); return false; }
+    chunks = [];
+    try{ mediaRec = new MediaRecorder(stream); }
+    catch(e){ toast("Recording not supported in this browser"); return false; }
+    mediaRec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    mediaRec.onstop = onCloudStop;
+    mediaRec.start();
+    return true;
+  }
+
+  async function onCloudStop(){
+    stopMeter();
+    const type = (mediaRec && mediaRec.mimeType) || "audio/webm";
+    const blob = new Blob(chunks, { type });
+    if(!blob.size){ statusEl.textContent = "Ready — press the mic or hit Space"; return; }
+    statusEl.textContent = "Transcribing…"; dot.classList.add("live");
+    try{
+      const fd = new FormData();
+      fd.append("file", blob, "audio.webm");
+      fd.append("model", S.whisperModel || "whisper-1");
+      if(S.lang) fd.append("language", S.lang.split("-")[0]);
+      const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method:"POST", headers:{ authorization:"Bearer "+S.aiKey }, body:fd
+      });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json();
+      const text = cleanup((j.text||"").trim());
+      committed = smartJoin(editor.value.trim(), text);
+      render(committed, "");
+      if(text){
+        statusEl.textContent = "Transcribed ✓";
+        pushHistory(committed);
+        if(S.autocopy) copy(true);
+      } else {
+        statusEl.textContent = "No speech detected";
+      }
+    }catch(e){
+      toast("Cloud transcription failed — "+(e.message||"check key"));
+      statusEl.textContent = "Ready — press the mic or hit Space";
+    }finally{ dot.classList.remove("live"); }
+  }
+
   /* ---------- audio level meter ---------- */
   let audioCtx, analyser, meterRAF, stream;
+  async function acquireMic(){
+    if(!stream) stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    return stream;
+  }
   async function startMeter(){
     try{
-      stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      await acquireMic();
       audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       const src = audioCtx.createMediaStreamSource(stream);
       analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
@@ -666,6 +737,7 @@
   function syncSwitches(){
     document.querySelectorAll(".switch").forEach(sw => sw.classList.toggle("on", !!S[sw.dataset.k]));
     $("#cleanChip").classList.toggle("on", S.clean);
+    $("#engine").value = S.engine;
     $("#aiProvider").value = S.aiProvider; $("#aiKey").value = S.aiKey; $("#aiModel").value = S.aiModel;
   }
 
@@ -688,6 +760,8 @@
     S[sw.dataset.k] = !S[sw.dataset.k]; save(); syncSwitches();
   });
   $("#lang").onchange = e => { S.lang=e.target.value; save(); if(recording){ stop(); start(); } };
+  $("#engine").onchange = e => { S.engine=e.target.value; save(); if(recording) stop();
+    statusEl.textContent = "Ready — press the mic or hit Space"; };
   $("#aiProvider").onchange = e => { S.aiProvider=e.target.value; save(); };
   $("#aiKey").onchange = e => { S.aiKey=e.target.value.trim(); save(); };
   $("#aiModel").onchange = e => { S.aiModel=e.target.value.trim(); save(); };

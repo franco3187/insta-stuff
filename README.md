@@ -53,3 +53,20 @@ node scripts/deliver.mjs                              # 1080x1350 + Canva HTML
 ```
 
 Sizing is 1080 × 1350 (4:5), the highest-real-estate Instagram portrait format.
+
+## `/watch` — give Claude a video input
+
+This repo bundles the [`watch`](https://github.com/bradautomates/claude-video)
+skill under `.claude/skills/watch`, so Claude Code can *watch* a video and
+answer questions about it — handy for breaking down a competitor's Reel,
+studying a viral hook, or turning a reference clip into carousel copy.
+
+```
+/watch https://www.instagram.com/reel/<id>/ what hook did they open with?
+/watch reference.mov summarize the first 10 seconds
+```
+
+It downloads with `yt-dlp`, extracts scene-aware frames with `ffmpeg`, pulls a
+timestamped transcript (native captions first, Whisper API fallback), and hands
+frames + transcript to Claude. `yt-dlp`/`ffmpeg` install on first run. Vendored
+from `bradautomates/claude-video` (MIT).

@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Flow — Voice Dictation</title>
+<style>
+  :root{
+    --bg:#0b0c10; --panel:#14161d; --panel-2:#1b1e27; --line:#262a36;
+    --ink:#eef1f7; --muted:#9aa3b2; --faint:#6a7385;
+    --accent:#6c8cff; --accent-2:#8a6cff; --accent-ink:#0b0c10;
+    --good:#3ecf8e; --bad:#ff6b6b; --warn:#ffb454;
+    --radius:16px; --radius-sm:10px;
+    --shadow:0 10px 40px rgba(0,0,0,.45);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f7fb; --panel:#ffffff; --panel-2:#f0f2f8; --line:#e3e6ef;
+    --ink:#151821; --muted:#5c6577; --faint:#8b93a5;
+    --accent:#4d6bff; --accent-2:#7a52ff; --accent-ink:#ffffff;
+    --shadow:0 10px 30px rgba(20,30,60,.10);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); line-height:1.5;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:22px 18px 120px; min-height:100%}
+
+  /* header */
+  header{display:flex; align-items:center; gap:12px; margin-bottom:20px}
+  .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;box-shadow:var(--shadow);
+  }
+  .logo svg{width:22px;height:22px}
+  .brand{font-weight:700;font-size:19px;letter-spacing:-.02em}
+  .brand small{display:block;font-weight:500;font-size:11.5px;color:var(--muted);letter-spacing:0}
+  header .spacer{flex:1}
+  .iconbtn{
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+    cursor:pointer;transition:.15s;
+  }
+  .iconbtn:hover{color:var(--ink);border-color:var(--accent)}
+  .iconbtn svg{width:18px;height:18px}
+
+  /* editor card */
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .editor-head{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;
+    border-bottom:1px solid var(--line);background:var(--panel-2);
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:0 0 auto;transition:.2s}
+  .dot.live{background:var(--bad);box-shadow:0 0 0 0 rgba(255,107,107,.6);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,107,.55)}70%{box-shadow:0 0 0 10px rgba(255,107,107,0)}100%{box-shadow:0 0 0 0 rgba(255,107,107,0)}}
+  .status{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .editor-head .spacer{flex:1}
+  .chip{
+    font:600 11px/1 var(--sans);color:var(--muted);background:var(--panel);
+    border:1px solid var(--line);padding:6px 9px;border-radius:8px;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .chip:hover{color:var(--ink);border-color:var(--accent)}
+  .chip.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+
+  #editor{
+    width:100%;min-height:230px;resize:vertical;border:0;outline:0;
+    background:transparent;color:var(--ink);font-family:var(--sans);
+    font-size:17px;line-height:1.65;padding:18px;
+  }
+  #editor::placeholder{color:var(--faint)}
+  .interim{color:var(--accent);opacity:.85}
+
+  .editor-foot{
+    display:flex;align-items:center;gap:14px;padding:10px 14px;
+    border-top:1px solid var(--line);background:var(--panel-2);flex-wrap:wrap;
+  }
+  .stat{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .stat b{color:var(--ink);font-weight:650}
+  .editor-foot .spacer{flex:1}
+  .tbtn{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:7px 12px;border-radius:9px;font:600 12.5px var(--sans);cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .tbtn:hover{color:var(--ink);border-color:var(--accent)}
+  .tbtn svg{width:15px;height:15px}
+  .tbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .tbtn.primary:hover{filter:brightness(1.05)}
+
+  /* command bar */
+  .cmds{margin-top:14px}
+  .cmds-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin:0 2px 8px;font-weight:700}
+  .cmd-row{display:flex;gap:8px;flex-wrap:wrap}
+  .cmd{
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:8px 12px;border-radius:10px;font:600 12.5px var(--sans);cursor:pointer;transition:.15s;
+  }
+  .cmd:hover{border-color:var(--accent-2);transform:translateY(-1px)}
+  .cmd:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+  /* mic dock */
+  .dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    display:flex;justify-content:center;pointer-events:none;
+    padding:0 0 max(20px,env(safe-area-inset-bottom));
+  }
+  .dock-inner{
+    pointer-events:auto;display:flex;align-items:center;gap:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:9px 9px 9px 20px;box-shadow:var(--shadow);backdrop-filter:blur(8px);
+  }
+  .hint{font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .hint kbd{
+    font:600 11px var(--mono);background:var(--panel-2);border:1px solid var(--line);
+    border-bottom-width:2px;border-radius:6px;padding:2px 6px;color:var(--ink);
+  }
+  .mic{
+    width:60px;height:60px;border-radius:50%;border:0;cursor:pointer;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff;display:grid;place-items:center;transition:.18s;position:relative;
+    box-shadow:0 6px 20px rgba(108,140,255,.45);
+  }
+  .mic:hover{transform:scale(1.05)}
+  .mic:active{transform:scale(.96)}
+  .mic svg{width:26px;height:26px}
+  .mic.rec{background:linear-gradient(135deg,#ff5b6b,#ff2d55);box-shadow:0 6px 24px rgba(255,45,85,.5)}
+  .mic .ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.5);opacity:0;transform:scale(.8)}
+  .mic.rec .ring{animation:ring 1.5s infinite}
+  @keyframes ring{0%{opacity:.6;transform:scale(.85)}100%{opacity:0;transform:scale(1.35)}}
+  .levels{display:flex;align-items:flex-end;gap:3px;height:26px;width:52px;justify-content:center}
+  .levels i{width:4px;border-radius:2px;background:var(--accent);height:4px;transition:height .08s}
+  .mic.rec ~ .levels i{background:var(--bad)}
+
+  /* history + panels */
+  section.block{margin-top:26px}
+  .block h2{font-size:14px;font-weight:700;margin:0 0 10px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .block h2 .count{font:600 11px var(--sans);background:var(--panel-2);border:1px solid var(--line);color:var(--muted);padding:2px 8px;border-radius:20px}
+  .hist{display:flex;flex-direction:column;gap:8px}
+  .hist-item{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;display:flex;gap:12px;align-items:flex-start;
+  }
+  .hist-item p{margin:0;font-size:14px;color:var(--ink);flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+  .hist-meta{font-size:11px;color:var(--faint);margin-top:5px}
+  .hist-actions{display:flex;gap:6px;flex:0 0 auto}
+  .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:24px;border:1px dashed var(--line);border-radius:12px}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);width:100%;max-width:460px}
+  .modal-head{display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .modal-head h3{margin:0;font-size:16px}
+  .modal-head .spacer{flex:1}
+  .modal-body{padding:18px}
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:12.5px;font-weight:650;margin-bottom:7px}
+  .field .desc{font-size:12px;color:var(--muted);margin:-3px 0 8px}
+  .field input,.field select{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);
+    padding:10px 12px;border-radius:10px;font:500 14px var(--sans);outline:0;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent)}
+  .toggle-row{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}
+  .toggle-row:last-child{border-bottom:0}
+  .toggle-row .t-label{font-size:13.5px;font-weight:600}
+  .toggle-row .t-desc{font-size:12px;color:var(--muted)}
+  .switch{width:42px;height:24px;border-radius:20px;background:var(--line);position:relative;cursor:pointer;flex:0 0 auto;transition:.18s;border:0}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.18s}
+  .switch.on{background:var(--accent)}
+  .switch.on::after{left:20px}
+  .modal-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:100px;z-index:60;
+    background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;
+    font:600 13px var(--sans);box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  .unsupported{background:var(--warn);color:#241a00;padding:12px 14px;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:16px;display:none}
+  a{color:var(--accent)}
+  @media (max-width:560px){
+    .hint{display:none}
+    .dock-inner{padding:8px}
+    #editor{font-size:16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v18M7 7v10M17 7v10M3 10v4M21 10v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <div class="brand">Flow<small>voice dictation, anywhere</small></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7.6 1.6 1.6 0 00-1 1.5V22a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H2a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H8a1.6 1.6 0 001-1.5V2a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V8a1.6 1.6 0 001.5 1H22a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="1.6"/></svg>
+    </button>
+  </header>
+
+  <div class="unsupported" id="unsupported">
+    ⚠️ On-device dictation needs the Web Speech API (<b>Chrome</b>, <b>Edge</b>, <b>Safari</b>). In this browser, switch <b>Settings → Transcription engine</b> to <b>Cloud (Whisper)</b> to dictate here, or just type and use the cleanup &amp; command tools.
+  </div>
+
+  <div class="card">
+    <div class="editor-head">
+      <span class="dot" id="dot"></span>
+      <span class="status" id="status">Ready — press the mic or hit Space</span>
+      <span class="spacer"></span>
+      <button class="chip" id="cleanChip" title="Auto-clean filler words, punctuation & capitalization as you speak">✨ Auto-clean</button>
+    </div>
+
+    <textarea id="editor" placeholder="Press the mic and start talking. Say &quot;new line&quot;, &quot;comma&quot;, &quot;period&quot;, &quot;question mark&quot;… Flow handles the rest."></textarea>
+
+    <div class="editor-foot">
+      <span class="stat"><b id="wc">0</b> words</span>
+      <span class="stat"><b id="cc">0</b> chars</span>
+      <span class="stat"><b id="wpm">0</b> wpm</span>
+      <span class="spacer"></span>
+      <button class="tbtn" id="clearBtn"><svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Clear</button>
+      <button class="tbtn primary" id="copyBtn"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="2"/></svg>Copy</button>
+    </div>
+  </div>
+
+  <div class="cmds">
+    <div class="cmds-label">Command mode — reshape your text</div>
+    <div class="cmd-row" id="cmdRow">
+      <button class="cmd" data-cmd="formal">Make formal</button>
+      <button class="cmd" data-cmd="casual">Make casual</button>
+      <button class="cmd" data-cmd="concise">Make concise</button>
+      <button class="cmd" data-cmd="bullets">Bullet points</button>
+      <button class="cmd" data-cmd="summary">Summarize</button>
+      <button class="cmd" data-cmd="email">Turn into email</button>
+      <button class="cmd" data-cmd="fix">Fix grammar</button>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>History <span class="count" id="histCount">0</span></h2>
+    <div class="hist" id="hist"></div>
+  </section>
+
+  <p style="text-align:center;color:var(--faint);font-size:12px;margin-top:34px">
+    Everything runs in your browser. Nothing is sent anywhere unless you enable AI polish.
+  </p>
+</div>
+
+<!-- mic dock -->
+<div class="dock">
+  <div class="dock-inner">
+    <span class="hint">Hold <kbd>Space</kbd> to talk · <kbd>Esc</kbd> stop</span>
+    <button class="mic" id="mic" aria-label="Start dictation">
+      <span class="ring"></span>
+      <svg viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="#fff" stroke-width="2"/><path d="M5 11a7 7 0 0014 0M12 18v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="levels" id="levels"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head"><h3>Settings</h3><span class="spacer"></span><button class="iconbtn" id="closeSettings" aria-label="Close"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="engine">Transcription engine</label>
+        <div class="desc">On-device is instant &amp; private (Chrome/Edge/Safari). Cloud (Whisper) is more accurate and works in any browser — needs an OpenAI key below.</div>
+        <select id="engine">
+          <option value="device">On-device (Web Speech) — free, private</option>
+          <option value="whisper">Cloud (OpenAI Whisper) — needs key</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="lang">Dictation language</label>
+        <select id="lang"></select>
+      </div>
+
+      <div class="toggle-row">
+        <div><div class="t-label">Auto-clean transcript</div><div class="t-desc">Remove "um/uh", add punctuation & caps</div></div>
+        <button class="switch" id="swClean" data-k="clean"></button>
+      </div>
+      <div class="toggle-row">
+        <div><div class="t-label">Auto-copy on stop</div><div class="t-desc">Copy to clipboard when you finish talking</div></div>
+        <button class="switch" id="swAuto" data-k="autocopy"></button>
+      </div>
+      <div class="toggle-row">
+        <div><div class="t-label">Continuous mode</div><div class="t-desc">Keep listening until you stop (vs. push-to-talk)</div></div>
+        <button class="switch" id="swCont" data-k="continuous"></button>
+      </div>
+
+      <div class="field" style="margin-top:18px">
+        <label for="aiProvider">AI polish (optional)</label>
+        <div class="desc">Command-mode buttons work locally. For best results, plug in a key to polish with a real LLM. Your key is stored only in this browser.</div>
+        <select id="aiProvider" style="margin-bottom:8px">
+          <option value="local">Local (no key, rule-based)</option>
+          <option value="openai">OpenAI-compatible</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+        </select>
+        <input id="aiKey" type="password" placeholder="API key (sk-…)" autocomplete="off" />
+        <input id="aiModel" type="text" placeholder="Model (e.g. gpt-4o-mini / claude-haiku-4-5-20251001)" style="margin-top:8px" />
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="tbtn" id="wipeBtn">Clear history</button>
+      <span class="spacer" style="flex:1"></span>
+      <button class="tbtn primary" id="saveSettings">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+  const $ = s => document.querySelector(s);
+  const LS = "flow.settings.v1", LH = "flow.history.v1";
+
+  /* ---------- state / settings ---------- */
+  const defaults = { clean:true, autocopy:false, continuous:false, lang:"en-US",
+                     theme:"dark", aiProvider:"local", aiKey:"", aiModel:"",
+                     engine:"device", whisperModel:"whisper-1" };
+  let S = Object.assign({}, defaults, load(LS));
+  let history = load(LH) || [];
+
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(){ localStorage.setItem(LS, JSON.stringify(S)); }
+  function saveHist(){ localStorage.setItem(LH, JSON.stringify(history.slice(0,50))); }
+
+  /* ---------- languages ---------- */
+  const LANGS = [
+    ["en-US","English (US)"],["en-GB","English (UK)"],["es-ES","Spanish (Spain)"],
+    ["es-MX","Spanish (Mexico)"],["fr-FR","French"],["de-DE","German"],["it-IT","Italian"],
+    ["pt-BR","Portuguese (Brazil)"],["pt-PT","Portuguese"],["nl-NL","Dutch"],["ru-RU","Russian"],
+    ["pl-PL","Polish"],["sv-SE","Swedish"],["da-DK","Danish"],["nb-NO","Norwegian"],["fi-FI","Finnish"],
+    ["tr-TR","Turkish"],["ar-SA","Arabic"],["he-IL","Hebrew"],["hi-IN","Hindi"],["bn-IN","Bengali"],
+    ["ja-JP","Japanese"],["ko-KR","Korean"],["zh-CN","Chinese (Mandarin)"],["zh-HK","Chinese (Cantonese)"],
+    ["zh-TW","Chinese (Taiwan)"],["th-TH","Thai"],["vi-VN","Vietnamese"],["id-ID","Indonesian"],
+    ["ms-MY","Malay"],["uk-UA","Ukrainian"],["cs-CZ","Czech"],["ro-RO","Romanian"],["el-GR","Greek"],
+    ["hu-HU","Hungarian"],["fil-PH","Filipino"]
+  ];
+
+  /* ---------- cleanup engine ---------- */
+  // spoken punctuation & commands -> symbols. English-focused; harmless in other langs.
+  const PUNCT = [
+    [/\b(new paragraph)\b/gi, "\n\n"],
+    [/\b(new line|next line|line break)\b/gi, "\n"],
+    [/\b(full stop|period)\b/gi, ". "],
+    [/\b(question mark)\b/gi, "? "],
+    [/\b(exclamation (mark|point))\b/gi, "! "],
+    [/\b(comma)\b/gi, ", "],
+    [/\b(semicolon)\b/gi, "; "],
+    [/\b(colon)\b/gi, ": "],
+    [/\b(dash|hyphen)\b/gi, " - "],
+    [/\b(open paren(thesis)?)\b/gi, " ("],
+    [/\b(close paren(thesis)?)\b/gi, ") "],
+    [/\b(open quote|quote unquote|begin quote)\b/gi, ' "'],
+    [/\b(close quote|end quote|unquote)\b/gi, '" '],
+    [/\b(smiley face|smiley)\b/gi, " :) "],
+    [/\b(ampersand)\b/gi, " & "]
+  ];
+  const FILLERS = /\b(um+|uh+|erm+|uhh+|hmm+|mm+|you know|i mean|sort of|kind of|like i said|basically|literally)\b/gi;
+
+  function cleanup(raw){
+    if(!S.clean) return raw;
+    let t = " " + raw + " ";
+    PUNCT.forEach(([re,rep]) => { t = t.replace(re, rep); });
+    t = t.replace(FILLERS, " ");
+    // remove standalone "like" only when clearly a filler (surrounded by spaces, not "I like")
+    t = t.replace(/(,?\s)\blike\b(\s)(?=[a-z])/gi, "$1");
+    t = t.replace(/[ \t]{2,}/g, " ");
+    t = t.replace(/\s+([.,;:!?])/g, "$1");     // no space before punctuation
+    t = t.replace(/([.,;:!?])(?=[^\s\n])/g, "$1 "); // space after
+    t = t.replace(/[ \t]+\n/g, "\n").replace(/\n[ \t]+/g, "\n");
+    t = t.replace(/\n{3,}/g, "\n\n");
+    t = t.trim();
+    // capitalize sentence starts + standalone "i"
+    t = t.replace(/(^|[.!?]\s+|\n\s*)([a-z])/g, (m,p,c) => p + c.toUpperCase());
+    t = t.replace(/\bi\b/g, "I").replace(/\bi'/g, "I'");
+    return t;
+  }
+
+  function smartJoin(base, add){
+    if(!base) return add;
+    if(/\n\s*$/.test(base)) return base + add;         // after newline, no space
+    if(add.startsWith("\n")) return base.replace(/\s+$/,"") + add;
+    return base.replace(/\s+$/,"") + " " + add;
+  }
+
+  /* ---------- speech recognition ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, recording = false, committed = "", startTs = 0;
+  const editor = $("#editor"), dot = $("#dot"), statusEl = $("#status");
+  const mic = $("#mic");
+
+  if(!SR){ $("#unsupported").style.display = "block"; }
+
+  function newRecognizer(){
+    const r = new SR();
+    r.lang = S.lang; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
+    r.onresult = e => {
+      let interim = "";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const res = e.results[i];
+        if(res.isFinal){
+          committed = smartJoin(committed, cleanup(res[0].transcript.trim()));
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      render(committed, cleanup(interim.trim()));
+    };
+    r.onerror = ev => {
+      if(ev.error === "not-allowed" || ev.error === "service-not-allowed"){
+        toast("Microphone blocked — allow access and retry"); stop();
+      } else if(ev.error === "no-speech"){ /* keep going */ }
+    };
+    r.onend = () => { if(recording){ try{ r.start(); }catch(e){} } }; // auto-restart while active
+    return r;
+  }
+
+  function render(base, interim){
+    editor.value = interim ? smartJoin(base, interim) : base;
+    updateStats();
+    editor.scrollTop = editor.scrollHeight;
+  }
+
+  async function start(){
+    if(recording) return;
+    committed = editor.value.trim();
+    if(S.engine === "whisper"){
+      const ok = await startCloud();
+      if(!ok) return;
+    } else {
+      if(!SR){ toast("On-device speech isn't supported here — switch to Cloud (Whisper) in Settings"); return; }
+      try{ rec = newRecognizer(); rec.start(); }
+      catch(e){ toast("Couldn't start mic"); return; }
+    }
+    recording = true; startTs = Date.now();
+    mic.classList.add("rec"); dot.classList.add("live");
+    mic.setAttribute("aria-label","Stop dictation");
+    statusEl.textContent = S.engine === "whisper" ? "Recording…" : "Listening…";
+    startMeter();
+  }
+
+  function stop(){
+    if(!recording) return;
+    recording = false;
+    mic.classList.remove("rec"); dot.classList.remove("live");
+    mic.setAttribute("aria-label","Start dictation");
+    if(S.engine === "whisper"){
+      try{ mediaRec && mediaRec.state !== "inactive" && mediaRec.stop(); }catch(e){}
+      // transcription + history handled in onCloudStop
+      return;
+    }
+    try{ rec && rec.stop(); }catch(e){}
+    committed = editor.value.trim();
+    render(committed, "");
+    stopMeter();
+    if(committed){
+      statusEl.textContent = "Saved to history";
+      pushHistory(committed);
+      if(S.autocopy) copy(true);
+    } else {
+      statusEl.textContent = "Ready — press the mic or hit Space";
+    }
+  }
+
+  function toggle(){ recording ? stop() : start(); }
+
+  /* ---------- cloud transcription (OpenAI Whisper) ---------- */
+  let mediaRec = null, chunks = [];
+  async function startCloud(){
+    if(!S.aiKey){ toast("Add an OpenAI key in Settings for cloud transcription"); $("#modalBg").classList.add("open"); return false; }
+    try{ await acquireMic(); }
+    catch(e){ toast("Microphone blocked — allow access and retry"); return false; }
+    chunks = [];
+    try{ mediaRec = new MediaRecorder(stream); }
+    catch(e){ toast("Recording not supported in this browser"); return false; }
+    mediaRec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    mediaRec.onstop = onCloudStop;
+    mediaRec.start();
+    return true;
+  }
+
+  async function onCloudStop(){
+    stopMeter();
+    const type = (mediaRec && mediaRec.mimeType) || "audio/webm";
+    const blob = new Blob(chunks, { type });
+    if(!blob.size){ statusEl.textContent = "Ready — press the mic or hit Space"; return; }
+    statusEl.textContent = "Transcribing…"; dot.classList.add("live");
+    try{
+      const fd = new FormData();
+      fd.append("file", blob, "audio.webm");
+      fd.append("model", S.whisperModel || "whisper-1");
+      if(S.lang) fd.append("language", S.lang.split("-")[0]);
+      const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method:"POST", headers:{ authorization:"Bearer "+S.aiKey }, body:fd
+      });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json();
+      const text = cleanup((j.text||"").trim());
+      committed = smartJoin(editor.value.trim(), text);
+      render(committed, "");
+      if(text){
+        statusEl.textContent = "Transcribed ✓";
+        pushHistory(committed);
+        if(S.autocopy) copy(true);
+      } else {
+        statusEl.textContent = "No speech detected";
+      }
+    }catch(e){
+      toast("Cloud transcription failed — "+(e.message||"check key"));
+      statusEl.textContent = "Ready — press the mic or hit Space";
+    }finally{ dot.classList.remove("live"); }
+  }
+
+  /* ---------- audio level meter ---------- */
+  let audioCtx, analyser, meterRAF, stream;
+  async function acquireMic(){
+    if(!stream) stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    return stream;
+  }
+  async function startMeter(){
+    try{
+      await acquireMic();
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+      src.connect(analyser);
+      const bars = [...document.querySelectorAll("#levels i")];
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const loop = () => {
+        analyser.getByteFrequencyData(data);
+        bars.forEach((b,i) => {
+          const v = data[i*2+2] || 0;
+          b.style.height = Math.max(4, (v/255)*26) + "px";
+        });
+        meterRAF = requestAnimationFrame(loop);
+      };
+      loop();
+    }catch(e){ /* meter is cosmetic */ }
+  }
+  function stopMeter(){
+    cancelAnimationFrame(meterRAF);
+    document.querySelectorAll("#levels i").forEach(b => b.style.height = "4px");
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    if(audioCtx) audioCtx.close().catch(()=>{});
+    stream = audioCtx = null;
+  }
+
+  /* ---------- stats ---------- */
+  function updateStats(){
+    const t = editor.value.trim();
+    const words = t ? t.split(/\s+/).length : 0;
+    $("#wc").textContent = words;
+    $("#cc").textContent = editor.value.length;
+    const mins = recording ? (Date.now()-startTs)/60000 : 0;
+    $("#wpm").textContent = mins > 0.05 ? Math.round(words/mins) : 0;
+  }
+  setInterval(() => { if(recording) updateStats(); }, 1000);
+
+  /* ---------- history ---------- */
+  function pushHistory(text){
+    if(history[0] && history[0].text === text) return;
+    history.unshift({ text, ts: Date.now() });
+    history = history.slice(0,50);
+    saveHist(); renderHistory();
+  }
+  function renderHistory(){
+    const box = $("#hist"); $("#histCount").textContent = history.length;
+    if(!history.length){ box.innerHTML = '<div class="empty">Your dictations will appear here.</div>'; return; }
+    box.innerHTML = "";
+    history.forEach((h,i) => {
+      const el = document.createElement("div");
+      el.className = "hist-item";
+      const p = document.createElement("p"); p.textContent = h.text;
+      const meta = document.createElement("div"); meta.className = "hist-meta"; meta.textContent = timeAgo(h.ts);
+      const col = document.createElement("div"); col.style.flex="1"; col.appendChild(p); col.appendChild(meta);
+      const acts = document.createElement("div"); acts.className = "hist-actions";
+      const c = mkIcon("copy","Copy"); c.onclick = () => copyText(h.text);
+      const u = mkIcon("use","Load into editor"); u.onclick = () => { editor.value = h.text; updateStats(); editor.scrollIntoView({behavior:"smooth"}); };
+      const d = mkIcon("del","Delete"); d.onclick = () => { history.splice(i,1); saveHist(); renderHistory(); };
+      acts.append(c,u,d);
+      el.append(col,acts); box.appendChild(el);
+    });
+  }
+  function mkIcon(kind,title){
+    const b = document.createElement("button"); b.className="iconbtn"; b.title=title;
+    b.style.width="32px"; b.style.height="32px";
+    const paths = {
+      copy:'<rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="2"/>',
+      use:'<path d="M4 12h12M12 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+      del:'<path d="M4 7h16M9 7V5h6v2M18 7l-1 13H7L6 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+    };
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px">'+paths[kind]+'</svg>';
+    return b;
+  }
+  function timeAgo(ts){
+    const s = (Date.now()-ts)/1000;
+    if(s<60) return "just now";
+    if(s<3600) return Math.floor(s/60)+"m ago";
+    if(s<86400) return Math.floor(s/3600)+"h ago";
+    return new Date(ts).toLocaleDateString();
+  }
+
+  /* ---------- clipboard ---------- */
+  function copyText(t){
+    if(!t){ toast("Nothing to copy"); return; }
+    navigator.clipboard.writeText(t).then(()=>toast("Copied ✓")).catch(()=>{
+      const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();
+      try{document.execCommand("copy");toast("Copied ✓");}catch(e){toast("Copy failed");}ta.remove();
+    });
+  }
+  function copy(silent){ const t=editor.value.trim(); if(t) copyText(t); else if(!silent) toast("Nothing to copy"); }
+
+  /* ---------- command mode (local + AI) ---------- */
+  const PROMPTS = {
+    formal:"Rewrite this in a polished, professional tone. Keep the meaning. Return only the rewritten text:",
+    casual:"Rewrite this in a relaxed, friendly, conversational tone. Return only the rewritten text:",
+    concise:"Make this significantly more concise without losing key info. Return only the text:",
+    bullets:"Convert this into a clear bulleted list. Return only the bullets:",
+    summary:"Summarize this in 2-3 short sentences. Return only the summary:",
+    email:"Turn this into a well-structured email with a greeting and sign-off. Return only the email:",
+    fix:"Fix grammar, spelling and punctuation. Keep the tone and meaning. Return only the corrected text:"
+  };
+
+  function localTransform(cmd, t){
+    switch(cmd){
+      case "bullets":
+        return t.split(/[\n.]+/).map(s=>s.trim()).filter(Boolean).map(s=>"• "+s.charAt(0).toUpperCase()+s.slice(1)).join("\n");
+      case "concise": {
+        return t.replace(FILLERS," ")
+                .replace(/\b(just|really|very|actually|simply|in order to|at this point in time)\b/gi,
+                         m=>({"in order to":"to","at this point in time":"now"}[m.toLowerCase()]||""))
+                .replace(/\s{2,}/g," ").replace(/\s+([.,])/g,"$1").trim();
+      }
+      case "summary": {
+        const sents = t.split(/(?<=[.!?])\s+/).filter(Boolean);
+        return sents.slice(0, Math.min(3, Math.ceil(sents.length/3))).join(" ");
+      }
+      case "email":
+        return "Hi,\n\n"+t.trim()+"\n\nBest,\n";
+      case "formal":
+        return t.replace(/\b(gonna)\b/gi,"going to").replace(/\b(wanna)\b/gi,"want to")
+                .replace(/\b(kinda)\b/gi,"somewhat").replace(/\b(yeah|yep)\b/gi,"yes")
+                .replace(/\b(nope|nah)\b/gi,"no").replace(/\b(a lot)\b/gi,"considerably")
+                .replace(/!+/g,".");
+      case "casual":
+        return t.replace(/\b(therefore)\b/gi,"so").replace(/\b(however)\b/gi,"but")
+                .replace(/\b(approximately)\b/gi,"about").replace(/\b(assistance)\b/gi,"help");
+      case "fix":
+        return cleanup(t);
+      default: return t;
+    }
+  }
+
+  async function runCommand(cmd){
+    const t = editor.value.trim();
+    if(!t){ toast("Write or dictate something first"); return; }
+    if(S.aiProvider === "local" || !S.aiKey){
+      const out = localTransform(cmd, t);
+      editor.value = out; updateStats(); pushHistory(out);
+      toast(S.aiKey ? "Applied (local)" : "Applied ✓  ·  add a key for AI polish");
+      return;
+    }
+    setBusy(true, "Polishing with AI…");
+    try{
+      const out = await aiComplete(PROMPTS[cmd] + "\n\n" + t);
+      editor.value = out.trim(); updateStats(); pushHistory(editor.value);
+      toast("Polished ✓");
+    }catch(e){
+      console.error(e);
+      toast("AI error — using local. "+(e.message||""));
+      const out = localTransform(cmd,t); editor.value = out; updateStats();
+    }finally{ setBusy(false); }
+  }
+
+  async function aiComplete(prompt){
+    const model = S.aiModel.trim();
+    if(S.aiProvider === "anthropic"){
+      const r = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{ "content-type":"application/json","x-api-key":S.aiKey,
+                  "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
+        body:JSON.stringify({ model: model||"claude-haiku-4-5-20251001", max_tokens:1024,
+                              messages:[{role:"user",content:prompt}] })
+      });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json(); return j.content.map(c=>c.text||"").join("");
+    } else {
+      // OpenAI-compatible
+      const r = await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",
+        headers:{ "content-type":"application/json","authorization":"Bearer "+S.aiKey },
+        body:JSON.stringify({ model: model||"gpt-4o-mini",
+                              messages:[{role:"user",content:prompt}], temperature:0.5 })
+      });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j = await r.json(); return j.choices[0].message.content;
+    }
+  }
+
+  function setBusy(on, msg){
+    document.querySelectorAll(".cmd").forEach(b=>b.disabled=on);
+    if(on) statusEl.textContent = msg;
+  }
+
+  /* ---------- toast ---------- */
+  let toastT;
+  function toast(m){ const el=$("#toast"); el.textContent=m; el.classList.add("show");
+    clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("show"),1900); }
+
+  /* ---------- settings UI ---------- */
+  function applyTheme(){ document.documentElement.setAttribute("data-theme", S.theme); }
+  function buildLangs(){
+    const sel = $("#lang"); sel.innerHTML="";
+    LANGS.forEach(([v,l]) => { const o=document.createElement("option"); o.value=v; o.textContent=l; sel.appendChild(o); });
+    sel.value = S.lang;
+  }
+  function syncSwitches(){
+    document.querySelectorAll(".switch").forEach(sw => sw.classList.toggle("on", !!S[sw.dataset.k]));
+    $("#cleanChip").classList.toggle("on", S.clean);
+    $("#engine").value = S.engine;
+    $("#aiProvider").value = S.aiProvider; $("#aiKey").value = S.aiKey; $("#aiModel").value = S.aiModel;
+  }
+
+  /* ---------- events ---------- */
+  mic.onclick = toggle;
+  $("#copyBtn").onclick = () => copy(false);
+  $("#clearBtn").onclick = () => { editor.value=""; committed=""; updateStats(); editor.focus(); };
+  editor.oninput = updateStats;
+  $("#cmdRow").addEventListener("click", e => { const b=e.target.closest(".cmd"); if(b) runCommand(b.dataset.cmd); });
+
+  $("#cleanChip").onclick = () => { S.clean=!S.clean; save(); syncSwitches(); toast(S.clean?"Auto-clean on":"Auto-clean off"); };
+  $("#themeBtn").onclick = () => { S.theme = S.theme==="dark"?"light":"dark"; save(); applyTheme(); };
+
+  $("#settingsBtn").onclick = () => $("#modalBg").classList.add("open");
+  $("#closeSettings").onclick = $("#saveSettings").onclick = () => $("#modalBg").classList.remove("open");
+  $("#modalBg").addEventListener("click", e => { if(e.target===$("#modalBg")) $("#modalBg").classList.remove("open"); });
+  $("#wipeBtn").onclick = () => { if(confirm("Clear all history?")){ history=[]; saveHist(); renderHistory(); toast("History cleared"); } };
+
+  document.querySelectorAll(".switch").forEach(sw => sw.onclick = () => {
+    S[sw.dataset.k] = !S[sw.dataset.k]; save(); syncSwitches();
+  });
+  $("#lang").onchange = e => { S.lang=e.target.value; save(); if(recording){ stop(); start(); } };
+  $("#engine").onchange = e => { S.engine=e.target.value; save(); if(recording) stop();
+    statusEl.textContent = "Ready — press the mic or hit Space"; };
+  $("#aiProvider").onchange = e => { S.aiProvider=e.target.value; save(); };
+  $("#aiKey").onchange = e => { S.aiKey=e.target.value.trim(); save(); };
+  $("#aiModel").onchange = e => { S.aiModel=e.target.value.trim(); save(); };
+
+  // keyboard: hold Space to talk (when not typing), Esc to stop
+  let spaceHeld = false;
+  document.addEventListener("keydown", e => {
+    const typing = document.activeElement === editor ||
+                   ["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName);
+    if(e.code === "Space" && !typing && !spaceHeld){
+      e.preventDefault(); spaceHeld = true; start();
+    }
+    if(e.code === "Escape") stop();
+  });
+  document.addEventListener("keyup", e => {
+    if(e.code === "Space" && spaceHeld){ spaceHeld=false; if(!S.continuous) stop(); }
+  });
+
+  /* ---------- init ---------- */
+  applyTheme(); buildLangs(); syncSwitches(); renderHistory(); updateStats();
+})();
+</script>
+</body>
+</html>

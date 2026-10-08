@@ -1,0 +1,30 @@
+{
+  "brand": "The Happy Hunting Grounds",
+  "brandAliases": ["Happy Hunting Grounds", "thehappyhuntinggrounds", "The Foster Files"],
+  "primaryDomain": "thehappyhuntinggrounds.org",
+  "otherDomains": ["happyhuntinggrounds.org"],
+  "instagram": "thehappyhuntinggrounds",
+  "niche": "calm-assertive dog behavior and foster-dog advice for new fosters and adopters",
+  "location": "",
+  "competitors": [],
+  "seedKeywords": [
+    "foster dog first 72 hours",
+    "dog decompression 3-3-3 rule",
+    "foster dog house training",
+    "crate training rescue dog crying at night",
+    "dog separation anxiety tips",
+    "leash reactive dog training",
+    "fearful rescue dog",
+    "rescue dog won't eat",
+    "introducing a foster dog to your dog",
+    "returning a foster dog",
+    "dog resource guarding",
+    "high energy dog exercise",
+    "dog marking in the house",
+    "how to foster a dog"
+  ],
+  "searchEngines": ["Google", "Bing", "DuckDuckGo", "Yahoo", "Brave", "Apple/Spotlight", "Yandex"],
+  "aiPlatforms": ["ChatGPT", "Google AI Overviews / AI Mode", "Gemini", "Perplexity", "Claude", "Microsoft Copilot", "Meta AI", "Grok"],
+  "dailySpendCapUsd": 0,
+  "notes": "dailySpendCapUsd is the most the daily run may spend on paid OpenSEO/DataForSEO calls (AI-visibility checks, explore_prompt, paid keyword pulls). 0 = free checks only. Raise it when you want paid data."
+}
